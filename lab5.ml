@@ -147,7 +147,7 @@ slides.
 let rec length (m : 'a mlist) : int =
   match m with
   | Nil -> 0
-  | Cons(x, y) -> 1 + length(!y) ;;
+  | Cons(_, y) -> 1 + length(!y) ;;
 
 (* What is the time complexity of the length function in O() notation
 in terms of the length of its list argument?
@@ -223,7 +223,7 @@ Example of use:
 let rec mappend (lst1 : 'a mlist) (lst2 : 'a mlist) : unit =
   match lst1 with
   | Nil -> raise (Invalid_argument "first list must be nonempty")
-  | Cons(x,y) -> if y = {contents = Nil} then y := lst2
+  | Cons(_,y) -> if y = {contents = Nil} then y := lst2
     			 else mappend !y lst2;
   ;;
 
@@ -318,10 +318,10 @@ module MakeImpQueue (A : sig
       | Nil -> None
     let to_string q =
       let rec helper q =
-        match deq q with
-        | None -> "||"
-        | Some a -> (A.to_string a) ^ " -> " ^ helper q in
-      helper q
+        match q with
+        | Nil -> "||"
+        | Cons(a,q) -> (A.to_string a) ^ " -> " ^ helper !q in
+      helper (!(q.front))
   end ;;
 
 (* To build an imperative queue, we apply the functor to an
