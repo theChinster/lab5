@@ -3,7 +3,7 @@
                Imperative Programming and References
                              Spring 2018
  *)
-   
+
 (*
 Objective:
 
@@ -19,17 +19,22 @@ Part 1: Fun with references
 Consider a function inc that takes an int ref and has the side effect
 of incrementing the integer stored in the ref. What is an appropriate
 type for the return value? What should the type for the function as a
-whole be? *)
+whole be?
 
-   
+return value: int ref
+type fo function: int ref -> unit
+
+*)
+
+
 (* Now implement the function. (As usual, for this and succeeding
 exercises, you shouldn't feel beholden to how the definition is
 introduced in the skeleton code below. For instance, you might want to
 add a "rec", or use a different argument list, or no argument list at
 all but binding to an anonymous function instead.) *)
 
-let inc _ =
-  failwith "inc not implemented" ;;
+let inc (a : int ref) : unit =
+  a := !a + 1 ;;
 
 (* Write a function named remember that returns the last string that
 it was called with. The first time it is called, it should return the
@@ -47,8 +52,12 @@ This is probably the least functional function ever written.
 As usual, you shouldn't feel beholden to how the definition is
 introduced in the skeleton code below. *)
 
-let remember _ = 
-  failwith "remember not implemented" ;;
+let last = ref "" ;;
+
+let remember (s : string) : string =
+  let temp = !last in
+  last := s;
+  temp ;;
 
 (*====================================================================
 Part 2: Gensym
@@ -90,16 +99,19 @@ Complete the implementation of gensym. As usual, you shouldn't feel
 beholden to how the definition is introduced in the skeleton code
 below. (We'll stop mentioning this now.) *)
 
-let gensym (s : string) : string = 
-  failwith "gensym not implemented" ;;
+let index = ref (~-1) ;;
+
+let gensym (s : string) : string =
+  index := !index + 1;
+  String.concat "" [s; (string_of_int !index)] ;;
 
 (*====================================================================
 Part 3: Appending mutable lists
 
 Recall the definition of the mutable list type from lecture: *)
 
-type 'a mlist = 
-  | Nil 
+type 'a mlist =
+  | Nil
   | Cons of 'a * ('a mlist ref) ;;
 
 (* Mutable lists are just like regular lists, except that the tail of
@@ -120,7 +132,7 @@ list to a mutable list, with behavior like this:
  *)
 
 let mlist_of_list (lst : 'a list) : 'a mlist =
-  failwith "mlist_of_list not implemented" ;;
+  List.fold_right (fun y x -> let a = ref x in Cons (y, a)) lst Nil;;
 
 (* Define a function length to compute the length of an mlist. Try to
 do this without looking at the solution that is given in the lecture
@@ -132,11 +144,15 @@ slides.
     - : int = 4
  *)
 
-let length (m : 'a mlist) : int = 
-  failwith "length not implemented" ;;
+let rec length (m : 'a mlist) : int =
+  match m with
+  | Nil -> 0
+  | Cons(x, y) -> 1 + length(!y) ;;
 
 (* What is the time complexity of the length function in O() notation
-in terms of the length of its list argument? *)
+in terms of the length of its list argument?
+O(n)
+*)
 
 
 (* Now, define a function mappend that takes a *non-empty* mutable
@@ -148,7 +164,7 @@ about before you get started:
    can glean our intended answer from the examples below, but try to
    think it through yourself first.)
 
-#ifdef SOLN 
+#ifdef SOLN
 (* ANSWER: Since mappend is called for its side effect, unit is the
 appropriate return type. An alternative would be to return some
 indication as to whether the appending succeeded -- since it could
@@ -204,8 +220,12 @@ Example of use:
               {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})})})})
  *)
 
-let mappend _ = 
-  failwith "mappend not implemented" ;;
+let rec mappend (lst1 : 'a mlist) (lst2 : 'a mlist) : unit =
+  match lst1 with
+  | Nil -> raise (Invalid_argument "first list must be nonempty")
+  | Cons(x,y) -> if y = {contents = Nil} then y := lst2
+    			 else mappend !y lst2;
+  ;;
 
 (* What happens when you evaluate the following expressions
 sequentially in order?
@@ -278,26 +298,30 @@ module MakeImpQueue (A : sig
     type elt = A.t
     type mlist = Nil | Cons of elt * (mlist ref)
     type queue = {front: mlist ref ; rear: mlist ref}
-    let empty () = {front = ref Nil; rear = ref Nil} 
-    let enq x q = 
+    let empty () = {front = ref Nil; rear = ref Nil}
+    let enq x q =
       match !(q.rear) with
       | Cons (_h, t) -> assert (!t = Nil);
                         t := Cons(x, ref Nil);
                         q.rear := !t
-      | Nil -> assert (!(q.front) = Nil); 
+      | Nil -> assert (!(q.front) = Nil);
                q.front := Cons(x, ref Nil);
                q.rear := !(q.front)
-    let deq q = 
+    let deq q =
       match !(q.front) with
-      | Cons (h, t) -> 
+      | Cons (h, t) ->
          q.front := !t ;
          (match !t with
           | Nil -> q.rear := Nil
-          | Cons(_, _) -> ()); 
+          | Cons(_, _) -> ());
          Some h
       | Nil -> None
-    let to_string q = 
-      failwith "to_string not implemented"
+    let to_string q =
+      let rec helper q =
+        match deq q with
+        | None -> "||"
+        | Some a -> (A.to_string a) ^ " -> " ^ helper q in
+      helper q
   end ;;
 
 (* To build an imperative queue, we apply the functor to an
@@ -313,7 +337,7 @@ module IntQueue = MakeImpQueue (struct
 the queue to a string to make sure that the right elements are in
 there. *)
 
-let test () = 
+let test () =
   let open IntQueue in
   let q = empty () in
   enq 1 q;
@@ -321,7 +345,7 @@ let test () =
   enq 3 q;
   to_string q ;;
 
-(* Running the test function should have the following behavior: 
+(* Running the test function should have the following behavior:
 
 # test () ;;
 - : string = "1 -> 2 -> 3 -> ||"
